@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-actions"><a class="button" href="{{ url_for('new_maintenance') }}">+ Add Maintenance</a></div>
+<table>
+  <thead><tr><th>Asset</th><th>Task</th><th>Last Done</th><th>Due</th><th>Mileage</th><th>Due Mileage</th><th>Cost</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for r in records %}
+    <tr>
+      <td>{{ r.asset_name }}</td><td>{{ r.task }}</td><td>{{ r.last_done or '' }}</td><td>{{ r.due_date or '' }}</td>
+      <td>{{ r.mileage or '' }}</td><td>{{ r.due_mileage or '' }}</td><td>${{ '%.2f'|format(r.cost or 0) }}</td>
+      <td><span class="status {{ compute_status(r.due_date)|lower|replace(' ', '-') }}">{{ compute_status(r.due_date) }}</span></td>
+      <td><form method="post" action="{{ url_for('delete_maintenance', record_id=r.id) }}" onsubmit="return confirm('Delete this record?')"><button class="danger">Delete</button></form></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

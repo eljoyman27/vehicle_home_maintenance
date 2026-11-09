@@ -1,0 +1,19 @@
+{% if records is defined and records %}
+<table>
+  <thead><tr><th>Asset</th><th>Task</th><th>Due Date</th><th>Status</th><th>Cost</th><th>Notes</th></tr></thead>
+  <tbody>
+  {% for r in records %}
+    <tr>
+      <td>{{ r.asset_name }}</td>
+      <td>{{ r.task }}</td>
+      <td>{{ r.due_date or '' }}</td>
+      <td><span class="status {{ r.status|lower|replace(' ', '-') }}">{{ r.status }}</span></td>
+      <td>${{ '%.2f'|format(r.cost or 0) }}</td>
+      <td>{{ r.notes or '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">Nothing here yet.</p>
+{% endif %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="cards">
+  <div class="card"><h3>Overdue</h3><p>{{ overdue|length }}</p></div>
+  <div class="card"><h3>Due Soon</h3><p>{{ due_soon|length }}</p></div>
+  <div class="card"><h3>Total Logged Cost</h3><p>${{ '%.2f'|format(total_cost) }}</p></div>
+</section>
+
+<h2>Overdue</h2>
+{% include "partials_table.html" with context %}
+{% set records = due_soon %}
+<h2>Due Soon</h2>
+{% include "partials_table.html" with context %}
+{% set records = upcoming %}
+<h2>Upcoming / Recent</h2>
+{% include "partials_table.html" with context %}
+{% endblock %}

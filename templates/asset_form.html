@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Add Asset</h2>
+<form method="post" class="form">
+  <label>Name <input name="name" required></label>
+  <label>Category <input name="category" placeholder="Vehicle, Appliance, Tool..." required></label>
+  <label>Year <input name="year"></label>
+  <label>Make/Model <input name="make_model"></label>
+  <label>Notes <textarea name="notes"></textarea></label>
+  <button type="submit">Save Asset</button>
+</form>
+{% endblock %}
