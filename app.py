@@ -1,17 +1,24 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
+from dotenv import load_dotenv
 import sqlite3
 from pathlib import Path
 from datetime import date, datetime
 import os
 
+load_dotenv()
+
 APP_DIR = Path(__file__).parent
 DB_PATH = APP_DIR / "maintenance.db"
+
+app = Flask(__name__)
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 
 if not app.secret_key:
     raise RuntimeError("FLASK_SECRET_KEY no está configurada")
 
+if not app.secret_key:
+    raise RuntimeError("FLASK_SECRET_KEY no está configurada")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
