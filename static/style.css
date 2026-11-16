@@ -380,3 +380,27 @@ textarea {
     margin: 25px auto;
   }
 }
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.button-secondary {
+  background: #64748b;
+}
+
+.button-secondary:hover {
+  background: #475569;
+}
+
+.button-edit {
+  display: inline-block;
+  background: #2563eb;
+  margin-right: 8px;
+}
+
+.button-edit:hover {
+  background: #1d4ed8;
+}

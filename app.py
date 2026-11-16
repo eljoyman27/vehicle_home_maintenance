@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from dotenv import load_dotenv
 import sqlite3
 from pathlib import Path
@@ -95,6 +95,17 @@ def compute_status(due_date):
 
     return "Upcoming"
 
+def validate_maintenance_dates(last_done, due_date):
+    if not last_done or not due_date:
+        return True
+
+    try:
+        last = date.fromisoformat(last_done)
+        due = date.fromisoformat(due_date)
+    except ValueError:
+        return False
+
+    return due > last
 
 @app.before_request
 def setup():
@@ -118,7 +129,8 @@ def dashboard():
         item["days_until"] = days_until(item.get("due_date"))
         item["status"] = compute_status(item.get("due_date"))
         items.append(item)
-        has_maintenance = len(items) > 0
+
+    has_maintenance = len(items) > 0
 
     overdue = [i for i in items if i["status"] == "Overdue"]
     due_soon = [i for i in items if i["status"] == "Due Soon"]
@@ -188,6 +200,17 @@ def new_maintenance():
     assets = conn.execute("SELECT * FROM assets ORDER BY name").fetchall()
     if request.method == "POST":
         due_date = request.form.get("due_date") or None
+        last_done = request.form.get("last_done") or None
+
+        if not validate_maintenance_dates(last_done, due_date):
+            conn.close()
+            flash("Due Date must be later than Last Done.")
+            return render_template(
+                "maintenance_form.html",
+                assets=assets,
+                record=dict(request.form),
+                edit_mode=False
+            ), 400
         conn.execute("""
             INSERT INTO maintenance
             (asset_id, task, last_done, due_date, mileage, due_mileage, cost, status, notes)
@@ -219,6 +242,78 @@ def delete_maintenance(record_id):
     conn.close()
     flash("Maintenance record deleted.")
     return redirect(url_for("maintenance"))
+
+
+@app.route("/maintenance/<int:record_id>/edit", methods=["GET", "POST"])
+def edit_maintenance(record_id):
+    conn = get_db()
+
+    record = conn.execute(
+        "SELECT * FROM maintenance WHERE id = ?",
+        (record_id,)
+    ).fetchone()
+
+    if record is None:
+        conn.close()
+        abort(404)
+
+    assets = conn.execute(
+        "SELECT * FROM assets ORDER BY name"
+    ).fetchall()
+
+    if request.method == "POST":
+        last_done = request.form.get("last_done") or None
+        due_date = request.form.get("due_date") or None
+
+        if not validate_maintenance_dates(last_done, due_date):
+            conn.close()
+            flash("Due Date must be later than Last Done.")
+            return render_template(
+                "maintenance_form.html",
+                assets=assets,
+                record=dict(request.form),
+                edit_mode=True
+            ), 400
+
+        conn.execute("""
+            UPDATE maintenance
+            SET asset_id = ?,
+                task = ?,
+                last_done = ?,
+                due_date = ?,
+                mileage = ?,
+                due_mileage = ?,
+                cost = ?,
+                status = ?,
+                notes = ?
+            WHERE id = ?
+        """, (
+            request.form["asset_id"],
+            request.form["task"],
+            last_done,
+            due_date,
+            request.form.get("mileage") or None,
+            request.form.get("due_mileage") or None,
+            request.form.get("cost") or 0,
+            compute_status(due_date),
+            request.form.get("notes"),
+            record_id
+        ))
+
+        conn.commit()
+        conn.close()
+
+        flash("Maintenance record updated successfully.")
+        return redirect(url_for("maintenance"))
+
+    conn.close()
+
+    return render_template(
+        "maintenance_form.html",
+        assets=assets,
+        record=record,
+        edit_mode=True
+    )
 
 
 if __name__ == "__main__":
