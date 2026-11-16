@@ -17,9 +17,6 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY")
 if not app.secret_key:
     raise RuntimeError("FLASK_SECRET_KEY no está configurada")
 
-if not app.secret_key:
-    raise RuntimeError("FLASK_SECRET_KEY no está configurada")
-
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -86,12 +83,16 @@ def days_until(due_date):
 
 def compute_status(due_date):
     d = days_until(due_date)
+
     if d is None:
-        return "Upcoming"
+        return "Not Scheduled"
+
     if d < 0:
         return "Overdue"
+
     if d <= 14:
         return "Due Soon"
+
     return "Upcoming"
 
 
@@ -117,13 +118,26 @@ def dashboard():
         item["days_until"] = days_until(item.get("due_date"))
         item["status"] = compute_status(item.get("due_date"))
         items.append(item)
+        has_maintenance = len(items) > 0
 
     overdue = [i for i in items if i["status"] == "Overdue"]
     due_soon = [i for i in items if i["status"] == "Due Soon"]
     upcoming = [i for i in items if i["status"] == "Upcoming"]
     total_cost = sum(float(i.get("cost") or 0) for i in items)
+    not_scheduled = [
+        i for i in items
+        if i["status"] == "Not Scheduled"
+    ]
 
-    return render_template("dashboard.html", overdue=overdue, due_soon=due_soon, upcoming=upcoming[:8], total_cost=total_cost)
+    return render_template(
+        "dashboard.html",
+        overdue=overdue,
+        due_soon=due_soon,
+        upcoming=upcoming[:8],
+        not_scheduled=not_scheduled,
+        total_cost=total_cost,
+        has_maintenance=has_maintenance
+    )
 
 
 @app.route("/assets")
