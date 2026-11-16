@@ -404,3 +404,54 @@ textarea {
 .button-edit:hover {
   background: #1d4ed8;
 }
+.reminder-fieldset {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 22px;
+  margin: 10px 0;
+}
+
+.reminder-fieldset legend {
+  font-weight: 700;
+  font-size: 18px;
+  padding: 0 8px;
+}
+
+.reminder-group {
+  margin-bottom: 24px;
+}
+
+.reminder-group:last-child {
+  margin-bottom: 0;
+}
+
+.reminder-group h3 {
+  margin-bottom: 6px;
+}
+
+.reminder-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.reminder-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 10px 13px;
+  border-radius: 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.reminder-option:has(input:checked) {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.reminder-option input {
+  accent-color: #2563eb;
+}

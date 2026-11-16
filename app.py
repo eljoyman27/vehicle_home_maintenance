@@ -20,6 +20,7 @@ if not app.secret_key:
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
@@ -50,6 +51,22 @@ def init_db():
             notes TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(asset_id) REFERENCES assets(id)
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS maintenance_reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            maintenance_id INTEGER NOT NULL,
+            reminder_type TEXT NOT NULL
+                CHECK(reminder_type IN ('materials', 'maintenance')),
+            minutes_before INTEGER NOT NULL
+                CHECK(minutes_before >= 0),
+            message TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(maintenance_id)
+                REFERENCES maintenance(id)
+                ON DELETE CASCADE,
+            UNIQUE(maintenance_id, reminder_type, minutes_before)
         )
     """)
     conn.commit()
@@ -106,6 +123,78 @@ def validate_maintenance_dates(last_done, due_date):
         return False
 
     return due > last
+
+REMINDER_OPTIONS = {
+    "15m": 15,
+    "1h": 60,
+    "1d": 1440,
+    "3d": 4320,
+    "7d": 10080,
+    "14d": 20160,
+    "30d": 43200,
+}
+@app.context_processor
+def inject_reminder_options():
+    return {
+        "reminder_options": REMINDER_OPTIONS,
+        "selected_reminders": set()
+    }
+
+def parse_reminders(form):
+    reminders = []
+
+    for reminder_type in ("materials", "maintenance"):
+        field = f"reminders_{reminder_type}"
+        selected = form.getlist(field)
+
+        for option in selected:
+            if option not in REMINDER_OPTIONS:
+                raise ValueError(
+                    f"Invalid reminder option: {option}"
+                )
+
+            reminders.append({
+                "reminder_type": reminder_type,
+                "minutes_before": REMINDER_OPTIONS[option],
+                "message": (
+                    "Buy materials for maintenance"
+                    if reminder_type == "materials"
+                    else "Perform scheduled maintenance"
+                )
+            })
+
+    return reminders
+
+def save_reminders(conn, maintenance_id, reminders):
+    conn.execute(
+        "DELETE FROM maintenance_reminders WHERE maintenance_id = ?",
+        (maintenance_id,)
+    )
+
+    for reminder in reminders:
+        conn.execute("""
+            INSERT INTO maintenance_reminders
+                (maintenance_id, reminder_type,
+                 minutes_before, message)
+            VALUES (?, ?, ?, ?)
+        """, (
+            maintenance_id,
+            reminder["reminder_type"],
+            reminder["minutes_before"],
+            reminder["message"]
+        ))
+
+def get_reminders(conn, maintenance_id):
+    rows = conn.execute("""
+        SELECT reminder_type, minutes_before
+        FROM maintenance_reminders
+        WHERE maintenance_id = ?
+    """, (maintenance_id,)).fetchall()
+
+    return {
+        (row["reminder_type"], row["minutes_before"])
+        for row in rows
+    }
 
 @app.before_request
 def setup():
@@ -202,6 +291,7 @@ def new_maintenance():
         due_date = request.form.get("due_date") or None
         last_done = request.form.get("last_done") or None
 
+        # 1. Validar fechas
         if not validate_maintenance_dates(last_done, due_date):
             conn.close()
             flash("Due Date must be later than Last Done.")
@@ -211,14 +301,26 @@ def new_maintenance():
                 record=dict(request.form),
                 edit_mode=False
             ), 400
-        conn.execute("""
+
+        # 2. Validar recordatorios
+        # 2. Validar recordatorios
+        try:
+            reminders = parse_reminders(request.form)
+        except ValueError as error:
+            conn.close()
+            flash(str(error))
+            return redirect(url_for("new_maintenance"))
+
+        # 3. Aquí continúa tu INSERT de mantenimiento
+        cursor = conn.execute("""
             INSERT INTO maintenance
-            (asset_id, task, last_done, due_date, mileage, due_mileage, cost, status, notes)
+            (asset_id, task, last_done, due_date, mileage,
+             due_mileage, cost, status, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             request.form["asset_id"],
             request.form["task"],
-            request.form.get("last_done") or None,
+            last_done,
             due_date,
             request.form.get("mileage") or None,
             request.form.get("due_mileage") or None,
@@ -226,6 +328,9 @@ def new_maintenance():
             compute_status(due_date),
             request.form.get("notes"),
         ))
+
+        save_reminders(conn, cursor.lastrowid, reminders)
+
         conn.commit()
         conn.close()
         flash("Maintenance record added.")
@@ -260,21 +365,33 @@ def edit_maintenance(record_id):
     assets = conn.execute(
         "SELECT * FROM assets ORDER BY name"
     ).fetchall()
+    selected_reminders = get_reminders(conn, record_id)
 
     if request.method == "POST":
         last_done = request.form.get("last_done") or None
         due_date = request.form.get("due_date") or None
 
+        # 1. Validar fechas
         if not validate_maintenance_dates(last_done, due_date):
             conn.close()
             flash("Due Date must be later than Last Done.")
             return render_template(
                 "maintenance_form.html",
                 assets=assets,
-                record=dict(request.form),
-                edit_mode=True
+                record=record,
+                edit_mode=True,
+                selected_reminders=selected_reminders
             ), 400
 
+        # 2. Validar recordatorios
+        try:
+            reminders = parse_reminders(request.form)
+        except ValueError as error:
+            conn.close()
+            flash(str(error))
+            return redirect(url_for("edit_maintenance", record_id=record_id))
+
+        # 3. Aquí continúa tu UPDATE
         conn.execute("""
             UPDATE maintenance
             SET asset_id = ?,
@@ -300,6 +417,8 @@ def edit_maintenance(record_id):
             record_id
         ))
 
+        save_reminders(conn, record_id, reminders)
+
         conn.commit()
         conn.close()
 
@@ -312,10 +431,11 @@ def edit_maintenance(record_id):
         "maintenance_form.html",
         assets=assets,
         record=record,
-        edit_mode=True
+        edit_mode=True,
+        selected_reminders=selected_reminders
     )
 
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    app.run(debug=True, port=5050)

@@ -77,6 +77,67 @@
     <textarea name="notes">{{ r.notes|default('', true) }}</textarea>
   </label>
 
+  <fieldset class="reminder-fieldset">
+    <legend>Reminders</legend>
+
+    <div class="reminder-group">
+      <h3>🛒 Buy Materials</h3>
+      <p class="muted">
+        Get notified before maintenance to purchase supplies.
+      </p>
+
+
+    <div class="reminder-options">
+      {% for value, label in [
+        ('30d', '30 days'),
+        ('14d', '14 days'),
+        ('7d', '7 days'),
+        ('3d', '3 days'),
+        ('1d', '1 day')
+      ] %}
+        <label class="reminder-option">
+          <input type="checkbox"
+                 name="reminders_materials"
+                 value="{{ value }}"
+                 {% if ('materials', reminder_options[value]) in selected_reminders %}
+                 checked
+                 {% endif %}>
+          {{ label }} before
+        </label>
+      {% endfor %}
+    </div>
+
+    </div>
+
+    <div class="reminder-group">
+      <h3>🔧 Perform Maintenance</h3>
+      <p class="muted">
+        Get notified when your scheduled service is approaching.
+      </p>
+
+    <div class="reminder-options">
+      {% for value, label in [
+        ('7d', '7 days'),
+        ('3d', '3 days'),
+        ('1d', '1 day'),
+        ('1h', '1 hour'),
+        ('15m', '15 minutes')
+      ] %}
+        <label class="reminder-option">
+          <input type="checkbox"
+                 name="reminders_maintenance"
+                 value="{{ value }}"
+                 {% if ('maintenance', reminder_options[value]) in selected_reminders %}
+                 checked
+                 {% endif %}>
+          {{ label }} before
+        </label>
+      {% endfor %}
+    </div>
+
+    </div>
+  </fieldset>
+
   <div class="form-actions">
     <button type="submit">
       {{ "Save Changes" if editing else "Save Maintenance" }}
