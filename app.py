@@ -312,16 +312,18 @@ def new_maintenance():
             return redirect(url_for("new_maintenance"))
 
         # 3. Aquí continúa tu INSERT de mantenimiento
+
         cursor = conn.execute("""
             INSERT INTO maintenance
-            (asset_id, task, last_done, due_date, mileage,
-             due_mileage, cost, status, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (asset_id, task, last_done, due_date, due_time,
+             mileage, due_mileage, cost, status, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             request.form["asset_id"],
             request.form["task"],
             last_done,
             due_date,
+            due_time,
             request.form.get("mileage") or None,
             request.form.get("due_mileage") or None,
             request.form.get("cost") or 0,
@@ -370,6 +372,7 @@ def edit_maintenance(record_id):
     if request.method == "POST":
         last_done = request.form.get("last_done") or None
         due_date = request.form.get("due_date") or None
+        due_time = request.form.get("due_time") or None
 
         # 1. Validar fechas
         if not validate_maintenance_dates(last_done, due_date):
@@ -398,6 +401,7 @@ def edit_maintenance(record_id):
                 task = ?,
                 last_done = ?,
                 due_date = ?,
+                due_time = ?,
                 mileage = ?,
                 due_mileage = ?,
                 cost = ?,
@@ -409,6 +413,7 @@ def edit_maintenance(record_id):
             request.form["task"],
             last_done,
             due_date,
+            due_time,
             request.form.get("mileage") or None,
             request.form.get("due_mileage") or None,
             request.form.get("cost") or 0,

@@ -48,6 +48,16 @@
   </label>
 
   <label>
+    Maintenance Time
+    <input
+      type="time"
+      name="due_time"
+      value="{{ r.due_time|default('', true) }}"
+    >
+  </label>
+
+
+  <label>
     Current Mileage / Hours
     <input type="number"
            name="mileage"
