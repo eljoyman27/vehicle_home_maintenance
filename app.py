@@ -287,8 +287,10 @@ def maintenance():
 def new_maintenance():
     conn = get_db()
     assets = conn.execute("SELECT * FROM assets ORDER BY name").fetchall()
+
     if request.method == "POST":
         due_date = request.form.get("due_date") or None
+        due_time = request.form.get("due_time") or None
         last_done = request.form.get("last_done") or None
 
         # 1. Validar fechas
